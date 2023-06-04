@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md # Sirviendo modelos con MLflow de cero a hero.
-# MAGIC 
+# MAGIC
 # MAGIC Este tutorial cubre lo siguiente:
 # MAGIC - Cómo importar datos de una máquina local al Databricks File System (DBFS).
 # MAGIC - Visualización de datos usando Seaborn y matplotlib.
@@ -9,15 +9,15 @@
 # MAGIC - Registro del mejor modelo en el Model Registry de MLflow.
 # MAGIC - Uso del modelo registrado para generar predicciones usando otro set de datos con Spark UDF.
 # MAGIC - Y finalmente configuración del model serving para entrega de recomendaciones con baja latencia.
-# MAGIC 
+# MAGIC
 # MAGIC En este ejemplo, trabajaremos en precir la calidad del vino "Vinho Verde" basado en las propiedades fisicoquímicas.
-# MAGIC 
+# MAGIC
 # MAGIC El ejemplo usa un set de datos del repositorio de Machine Learning de UCI, presentado en [*
 # MAGIC Modeling wine preferences by data mining from physicochemical properties*](https://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub) [Cortez et al., 2009].
-# MAGIC 
+# MAGIC
 # MAGIC ### Configuración
 # MAGIC - Este notebook requiere Databricks Runtime 7.6+ para Machine Learning, el cuál incluye lo último de MLFlow, además de otros frameworks de Machine Learning tales como sklearn, PyTorch, TensorFlow, XGBoost, etc. No hay necesidad de intalarlos.
-# MAGIC 
+# MAGIC
 # MAGIC - Sí se debe instalar mlflow hyperopt y xgboost
 
 # COMMAND ----------
@@ -26,18 +26,22 @@
 
 # COMMAND ----------
 
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
 # MAGIC %md ## Importación de Datos
 # MAGIC   
 # MAGIC En esta sección, descargaremos a local un dataset disponible en el archivo de una universidad para cargarlo en el Databricks File System (DBFS).
-# MAGIC 
+# MAGIC
 # MAGIC 1. Vamos a https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/ y descarguemos tanto `winequality-red.csv` como `winequality-white.csv` a nuestra máquina local.
-# MAGIC 
+# MAGIC
 # MAGIC 1. Desde este libro de Databricks, seleccionemos *File* > *Upload Data*, y arrastraremos estos archivos a la opción que dice drag-and-drop en la consola de Databricks para cargarlos al Databricks File System (DBFS). 
-# MAGIC 
+# MAGIC
 # MAGIC **Nota**: si no tiene la opción *File* > *Upload Data*, ud puede cargar el dataset usando la carpeta de ejemplos. Descomente las siguientes lineas en las seldas a continuación.
-# MAGIC 
+# MAGIC
 # MAGIC 1. Seleccione *Next*. Código auto-generado para cargar los datos aparecerá. Seleccione *pandas*, copie el codigo de ejemplo.
-# MAGIC 
+# MAGIC
 # MAGIC 1. Cree una neva celda, luego péguela en el código de ejemplo. Se verá similar al código en la celda subsiguiente. Haga los siguientes cambios:
 # MAGIC   - Convierta `sep=';'` a `pd.read_csv`
 # MAGIC   - Cambie los nombres de las variables de `df1` y `df2` a `white_wine` y `red_wine`, como muestra la celda subsiguiente.
@@ -54,37 +58,10 @@ dbutils.fs.ls("file:///tmp/")
 
 # COMMAND ----------
 
-# MAGIC %sql%
-# MAGIC #DROP TABLE IF EXISTS white_wine; CREATE TABLE white_wine USING csv OPTIONS (path "/FileStore/shared_uploads/megelon@protonmail.com/winequality_white.csv", header "true");
-# MAGIC #DROP TABLE IF EXISTS red_wine; CREATE TABLE red_wine USING csv OPTIONS (path "/FileStore/shared_uploads/megelon@protonmail.com/winequality_red.csv", header "true");
-
-# COMMAND ----------
-
-#white_wine=spark.read.format('csv').options(header='true').load('/FileStore/shared_uploads/megelon@protonmail.com/winequality_white.csv')
-#red_wine=spark.read.format('csv').options(header='true').load('/FileStore/shared_uploads/megelon@protonmail.com/winequality_red.csv')
-
-# COMMAND ----------
-
-# If you have the File > Upload Data menu option, follow the instructions in the previous cell to upload the data from your local machine.
-# The generated code, including the required edits described in the previous cell, is shown here for reference.
-
 import pandas as pd
-
-# In the following lines, replace <username@...> with your username.
-#white_wine = pd.read_csv('/FileStore/shared_uploads/megelon@protonmail.com/winequality_white.csv', sep=';')
-#red_wine = pd.read_csv('/FileStore/shared_uploads/megelon@protonmail.com/winequality_red.csv', sep=';')
-
-# If you do not have the File > Upload Data menu option, uncomment and run these lines to load the dataset.
-#white_wine = pd.read_csv("/databricks-datasets/wine-quality/winequality-white.csv", sep=";")
-#red_wine = pd.read_csv("/dbfs/databricks-datasets/wine-quality/winequality-red.csv", sep=";")
 
 white_wine = pd.read_csv("file:///tmp/winequality-white.csv", sep=';')
 red_wine = pd.read_csv("file:///tmp/winequality-red.csv", sep=';')
-
-# COMMAND ----------
-
-#dbutils.fs.ls('/FileStore/shared_uploads/megelon@protonmail.com/')
-#dbutils.fs.ls('dbfs:/databricks-datasets/wine-quality/')
 
 # COMMAND ----------
 
@@ -108,14 +85,12 @@ data = pd.concat([red_wine, white_wine], axis=0)
 # Remove spaces from column names
 data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
 
-# COMMAND ----------
-
 data.head()
 
 # COMMAND ----------
 
 # MAGIC %md ##Data Visualization
-# MAGIC 
+# MAGIC
 # MAGIC Before training a model, explore the dataset using Seaborn and Matplotlib.
 
 # COMMAND ----------
@@ -130,7 +105,7 @@ sns.distplot(data.quality, kde=False)
 # COMMAND ----------
 
 # MAGIC %md Looks like quality scores are normally distributed between 3 and 9. 
-# MAGIC 
+# MAGIC
 # MAGIC Define a wine as high quality if it has quality >= 7.
 
 # COMMAND ----------
@@ -162,7 +137,7 @@ for col in data.columns:
 # COMMAND ----------
 
 # MAGIC %md In the above box plots, a few variables stand out as good univariate predictors of quality. 
-# MAGIC 
+# MAGIC
 # MAGIC - In the alcohol box plot, the median alcohol content of high quality wines is greater than even the 75th quantile of low quality wines. High alcohol content is correlated with quality.
 # MAGIC - In the density box plot, low quality wines have a greater density than high quality wines. Density is inversely correlated with quality.
 
@@ -189,16 +164,14 @@ X_test = test.drop(["quality"], axis=1)
 y_train = train.quality
 y_test = test.quality
 
-# COMMAND ----------
-
 data
 
 # COMMAND ----------
 
 # MAGIC %md ## Building a Baseline Model
-# MAGIC 
+# MAGIC
 # MAGIC This task seems well suited to a random forest classifier, since the output is binary and there may be interactions between multiple variables.
-# MAGIC 
+# MAGIC
 # MAGIC The following code builds a simple classifier using scikit-learn. It uses MLflow to keep track of the model accuracy, and to save the model for later use.
 
 # COMMAND ----------
@@ -225,7 +198,7 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
 # mlflow.start_run creates a new MLflow run to track the performance of this model. 
 # Within the context, you call mlflow.log_param to keep track of the parameters used, and
 # mlflow.log_metric to record metrics like accuracy.
-with mlflow.start_run(run_name='untuned_random_forest'):
+with mlflow.start_run(run_name='pycon23_modelo_preferencias_vino'):
   n_estimators = 10
   model = RandomForestClassifier(n_estimators=n_estimators, random_state=np.random.RandomState(123))
   model.fit(X_train, y_train)
@@ -240,7 +213,7 @@ with mlflow.start_run(run_name='untuned_random_forest'):
   # Log the model with a signature that defines the schema of the model's inputs and outputs. 
   # When the model is deployed, this signature will be used to validate inputs.
   signature = infer_signature(X_train, wrappedModel.predict(None, X_train))
-  mlflow.pyfunc.log_model("random_forest_model", python_model=wrappedModel, signature=signature)
+  mlflow.pyfunc.log_model("random_forest_model_artifact", python_model=wrappedModel, signature=signature)
 
 # COMMAND ----------
 
@@ -258,29 +231,29 @@ feature_importances.sort_values('importance', ascending=False)
 # COMMAND ----------
 
 # MAGIC %md You logged the Area Under the ROC Curve (AUC) to MLflow. Click **Experiment** at the upper right to display the Experiment Runs sidebar. 
-# MAGIC 
+# MAGIC
 # MAGIC The model achieved an AUC of 0.89. 
-# MAGIC 
+# MAGIC
 # MAGIC A random classifier would have an AUC of 0.5, and higher AUC values are better. For more information, see [Receiver Operating Characteristic Curve](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve).
 
 # COMMAND ----------
 
 # MAGIC %md #### Registering the model in the MLflow Model Registry
-# MAGIC 
+# MAGIC
 # MAGIC By registering this model in the Model Registry, you can easily reference the model from anywhere within Databricks.
-# MAGIC 
+# MAGIC
 # MAGIC The following section shows how to do this programmatically, but you can also register a model using the UI by following the steps in [Register a model in the Model Registry
 # MAGIC ](https://docs.databricks.com/applications/mlflow/model-registry.html#register-a-model-in-the-model-registry).
 
 # COMMAND ----------
 
-run_id = mlflow.search_runs(filter_string='tags.mlflow.runName = "untuned_random_forest"').iloc[0].run_id
+run_id = mlflow.search_runs(filter_string='tags.mlflow.runName = "pycon23_modelo_preferencias_vino"').iloc[0].run_id
 
 # COMMAND ----------
 
 # If you see the error "PERMISSION_DENIED: User does not have any permission level assigned to the registered model", 
-# the cause may be that a model already exists with the name "DevRelWineQuality". Try using a different name.
-model_name = "DevRelWineQuality"
+# the cause may be that a model already exists with the name "pycon23_preferencias_vino_registrado". Try using a different name.
+model_name = "pycon23_modelo_preferencias_vino_registrado"
 model_version = mlflow.register_model(f"runs:/{run_id}/random_forest_model", model_name)
 
 # COMMAND ----------
@@ -290,7 +263,7 @@ model_version
 # COMMAND ----------
 
 # MAGIC %md You should now see the wine-quality model in the Models page. To display the Models page, click the Models icon in the left sidebar. 
-# MAGIC 
+# MAGIC
 # MAGIC Next, transition this model to production and load it into this notebook from the model registry.
 
 # COMMAND ----------
@@ -307,7 +280,7 @@ client.transition_model_version_stage(
 # COMMAND ----------
 
 # MAGIC %md The Models page now shows the model version in stage "Production".
-# MAGIC 
+# MAGIC
 # MAGIC You can now refer to the model using the path "models:/wine-quality/production".
 
 # COMMAND ----------
@@ -320,9 +293,9 @@ print(f'AUC: {roc_auc_score(y_test, model.predict(X_test))}')
 # COMMAND ----------
 
 # MAGIC %md ##Experimenting with a new model
-# MAGIC 
+# MAGIC
 # MAGIC The random forest model performed well even without hyperparameter tuning.
-# MAGIC 
+# MAGIC
 # MAGIC The following code uses the xgboost library to train a more accurate model. It runs a parallel hyperparameter sweep to train multiple
 # MAGIC models in parallel, using Hyperopt and SparkTrials. As before, the code tracks the performance of each parameter configuration with MLflow.
 
@@ -367,16 +340,20 @@ def train_model(params):
 
 # Greater parallelism will lead to speedups, but a less optimal hyperparameter sweep. 
 # A reasonable value for parallelism is the square root of max_evals.
-spark_trials = SparkTrials(parallelism=10)
+spark_trials = SparkTrials(parallelism=2)
+
+
+
+# COMMAND ----------
 
 # Run fmin within an MLflow run context so that each hyperparameter configuration is logged as a child run of a parent
 # run called "xgboost_models" .
-with mlflow.start_run(run_name='xgboost_models'):
+with mlflow.start_run(run_name='pycon23_modelo_preferencias_vino_xgboost_1'):
   best_params = fmin(
     fn=train_model, 
     space=search_space, 
     algo=tpe.suggest, 
-    max_evals=5,
+    max_evals=3,
     trials=spark_trials
     #,rstate=np.random.RandomState(123)
   )
@@ -385,19 +362,19 @@ with mlflow.start_run(run_name='xgboost_models'):
 
 # MAGIC %md  #### Use MLflow to view the results
 # MAGIC Open up the Experiment Runs sidebar to see the MLflow runs. Click on Date next to the down arrow to display a menu, and select 'auc' to display the runs sorted by the auc metric. The highest auc value is 0.91. You beat the baseline!
-# MAGIC 
+# MAGIC
 # MAGIC MLflow tracks the parameters and performance metrics of each run. Click the External Link icon <img src="https://docs.databricks.com/_static/images/external-link.png"/> at the top of the Experiment Runs sidebar to navigate to the MLflow Runs Table.
 
 # COMMAND ----------
 
 # MAGIC %md Now investigate how the hyperparameter choice correlates with AUC. Click the "+" icon to expand the parent run, then select all runs except the parent, and click "Compare". Select the Parallel Coordinates Plot.
-# MAGIC 
+# MAGIC
 # MAGIC The Parallel Coordinates Plot is useful in understanding the impact of parameters on a metric. You can drag the pink slider bar at the upper right corner of the plot to highlight a subset of AUC values and the corresponding parameter values. The plot below highlights the highest AUC values:
-# MAGIC 
+# MAGIC
 # MAGIC <img src="https://docs.databricks.com/_static/images/mlflow/end-to-end-example/parallel-coordinates-plot.png"/>
-# MAGIC 
+# MAGIC
 # MAGIC Notice that all of the top performing runs have a low value for reg_lambda and learning_rate. 
-# MAGIC 
+# MAGIC
 # MAGIC You could run another hyperparameter sweep to explore even lower values for these parameters. For simplicity, that step is not included in this example.
 
 # COMMAND ----------
@@ -413,21 +390,22 @@ print(f'AUC of Best Run: {best_run["metrics.auc"]}')
 # COMMAND ----------
 
 # MAGIC %md #### Updating the production wine_quality model in the MLflow Model Registry
-# MAGIC 
+# MAGIC
 # MAGIC Earlier, you saved the baseline model to the Model Registry under "wine_quality". Now that you have a created a more accurate model, update wine_quality.
 
 # COMMAND ----------
 
-dbutils.fs.ls('dbfs:/databricks/mlflow-tracking/596682901737901/858737b9e114459eb34796b36f94ac31/artifacts/model')
+#dbutils.fs.ls('dbfs:/databricks/mlflow-tracking/596682901737901/858737b9e114459eb34796b36f94ac31/artifacts/model')
 
 # COMMAND ----------
+
 
 new_model_version = mlflow.register_model(f"runs:/{best_run.run_id}/model", model_name)
 
 # COMMAND ----------
 
 # MAGIC %md Click **Models** in the left sidebar to see that the wine_quality model now has two versions. 
-# MAGIC 
+# MAGIC
 # MAGIC The following code promotes the new version to production.
 
 # COMMAND ----------
@@ -438,6 +416,10 @@ client.transition_model_version_stage(
   version=model_version.version,
   stage="Archived"
 )
+
+
+# COMMAND ----------
+
 
 # Promote the new model version to Production
 client.transition_model_version_stage(
@@ -459,9 +441,9 @@ print(f'AUC: {roc_auc_score(y_test, model.predict(X_test))}')
 # COMMAND ----------
 
 # MAGIC %md ##Batch Inference
-# MAGIC 
+# MAGIC
 # MAGIC There are many scenarios where you might want to evaluate a model on a corpus of new data. For example, you may have a fresh batch of data, or may need to compare the performance of two models on the same corpus of data.
-# MAGIC 
+# MAGIC
 # MAGIC The following code evaluates the model on data stored in a Delta table, using Spark to run the computation in parallel.
 
 # COMMAND ----------
@@ -491,8 +473,6 @@ apply_model_udf = mlflow.pyfunc.spark_udf(spark, f"models:/{model_name}/producti
 # Read the "new data" from Delta
 new_data = spark.read.format("delta").load(table_path)
 
-# COMMAND ----------
-
 display(new_data)
 
 # COMMAND ----------
@@ -516,9 +496,9 @@ display(new_data)
 
 # MAGIC %md
 # MAGIC ## Model serving (here we will need a free account, with full permisions to create the token)
-# MAGIC 
+# MAGIC
 # MAGIC To productionize the model for low latency predictions, use MLflow [model serving](https://docs.databricks.com/applications/mlflow/model-serving.html) to deploy the model to an endpoint.
-# MAGIC 
+# MAGIC
 # MAGIC The following code illustrates how to issue requests using a REST API to get predictions from the deployed model.
 
 # COMMAND ----------
@@ -529,78 +509,39 @@ display(new_data)
 # COMMAND ----------
 
 import os
-os.environ["DATABRICKS_TOKEN"] = "dapi31a5a32d90dd385db3a2ae86efaa6eee"
+os.environ["DATABRICKS_TOKEN"] = "dapi1541924f1d84e692bd0f455479472696-3"
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC Click **Models** in the left sidebar and navigate to the registered wine model. Click the serving tab, and then click **Enable Serving**.
-# MAGIC 
+# MAGIC
 # MAGIC Then, under **Call The Model**, click the **Python** button to display a Python code snippet to issue requests. Copy the code into this notebook. It should look similar to the code in the next cell. 
-# MAGIC 
+# MAGIC
 # MAGIC You can use the token to make these requests from outside Databricks notebooks as well.
 
 # COMMAND ----------
 
-# Replace with code snippet from the model serving page
+    import os
+    import requests
+    import numpy as np
+    import pandas as pd
+    import json
 
-import os
-import requests
-import numpy as np
-import pandas as pd
-import json
+    def create_tf_serving_json(data):
+      return {'inputs': {name: data[name].tolist() for name in data.keys()} if isinstance(data, dict) else data.tolist()}
 
-def create_tf_serving_json(data):
-  return {'inputs': {name: data[name].tolist() for name in data.keys()} if isinstance(data, dict) else data.tolist()}
-
-def score_model(dataset):
-  url = 'https://adb-7051609091030493.13.azuredatabricks.net/model/DevRelWineQuality/5/invocations'
-  headers = {'Authorization': f'Bearer {os.environ.get("DATABRICKS_TOKEN")}', 'Content-Type': 'application/json'}
-  ds_dict = dataset.to_dict(orient='split') if isinstance(dataset, pd.DataFrame) else create_tf_serving_json(dataset)
-  data_json = json.dumps(ds_dict, allow_nan=True)
-  response = requests.request(method='POST', headers=headers, url=url, data=data_json)
-  if response.status_code != 200:
-    raise Exception(f'Request failed with status {response.status_code}, {response.text}')
-  return response.json()
-
-# COMMAND ----------
-
-# Replace with code snippet from the model serving page
-import os
-import requests
-import pandas as pd
- 
-def score_model(dataset: pd.DataFrame):
-  url = 'https://DATABRICKS_URL/model/wine_quality/Production/invocations'
-  headers = {'Authorization': f'Bearer {os.environ.get("DATABRICKS_TOKEN")}'}
-  data_json = dataset.to_dict(orient='split')
-  response = requests.request(method='POST', headers=headers, url=url, json=data_json)
-  if response.status_code != 200:
-    raise Exception(f'Request failed with status {response.status_code}, {response.text}')
-  return response.json()
-
-
-# COMMAND ----------
-
-
-import os
-import requests
-import numpy as np
-import pandas as pd
-import json
-
-def create_tf_serving_json(data):
-  return {'inputs': {name: data[name].tolist() for name in data.keys()} if isinstance(data, dict) else data.tolist()}
-
-def score_model(dataset):
-  url = 'https://adb-7051609091030493.13.azuredatabricks.net/model/DevRelWineQuality/5/invocations'
-  headers = {'Authorization': f'Bearer {os.environ.get("DATABRICKS_TOKEN")}', 'Content-Type': 'application/json'}
-  ds_dict = dataset.to_dict(orient='split') if isinstance(dataset, pd.DataFrame) else create_tf_serving_json(dataset)
-  data_json = json.dumps(ds_dict, allow_nan=True)
-  response = requests.request(method='POST', headers=headers, url=url, data=data_json)
-  if response.status_code != 200:
-    raise Exception(f'Request failed with status {response.status_code}, {response.text}')
-  return response.json()
+    def score_model(dataset):
+      url = 'https://adb-2976239899983568.8.azuredatabricks.net/serving-endpoints/pycon23_cheers/invocations'
+      headers = {'Authorization': f'Bearer {os.environ.get("DATABRICKS_TOKEN")}', 
+    'Content-Type': 'application/json'}
+      ds_dict = {'dataframe_split': dataset.to_dict(orient='split')} if isinstance(dataset, pd.DataFrame) else create_tf_serving_json(dataset)
+      data_json = json.dumps(ds_dict, allow_nan=True)
+      response = requests.request(method='POST', headers=headers, url=url, data=data_json)
+      if response.status_code != 200:
+        raise Exception(f'Request failed with status {response.status_code}, {response.text}')
+    
+      return response.json()
 
 # COMMAND ----------
 
@@ -613,28 +554,13 @@ def score_model(dataset):
 num_predictions = 5
 served_predictions = score_model(X_test[:num_predictions])
 model_evaluations = model.predict(X_test[:num_predictions])
+
+# COMMAND ----------
+
 # Compare the results from the deployed model and the trained model
-pd.DataFrame({
-  "Model Prediction": model_evaluations,
-  "Served Model Prediction": served_predictions,
-})
+pd.DataFrame(served_predictions)
 
 # COMMAND ----------
 
-# Model serving is designed for low-latency predictions on smaller batches of data
-num_predictions = 5
-served_predictions = score_model(X_test[:num_predictions])
-model_evaluations = model.predict(X_test[:num_predictions])
 # Compare the results from the deployed model and the trained model
-pd.DataFrame({
-  "Model Prediction": model_evaluations,
-  "Served Model Prediction": served_predictions,
-})
-
-# COMMAND ----------
-
-X_test[:num_predictions]#.to_json()
-
-# COMMAND ----------
-
-score_model(X_test[:num_predictions])
+pd.DataFrame({ "Model Prediction":model_evaluations}) 
