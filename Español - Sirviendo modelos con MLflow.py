@@ -254,7 +254,7 @@ run_id = mlflow.search_runs(filter_string='tags.mlflow.runName = "pycon23_modelo
 # If you see the error "PERMISSION_DENIED: User does not have any permission level assigned to the registered model", 
 # the cause may be that a model already exists with the name "pycon23_preferencias_vino_registrado". Try using a different name.
 model_name = "pycon23_modelo_preferencias_vino_registrado"
-model_version = mlflow.register_model(f"runs:/{run_id}/random_forest_model", model_name)
+model_version = mlflow.register_model(f"runs:/{run_id}/random_forest_model_artifact", model_name)
 
 # COMMAND ----------
 
