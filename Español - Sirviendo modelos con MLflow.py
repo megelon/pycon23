@@ -73,7 +73,7 @@ red_wine
 
 # COMMAND ----------
 
-# MAGIC %md Merge the two DataFrames into a single dataset, with a new binary feature "is_red" that indicates whether the wine is red or white.
+# MAGIC %md Unamos los dos DataFrames en un único set de datos, con una nueva carácterística (feature) binaria "is_red" que indica si el vino es rojo o blanco.
 
 # COMMAND ----------
 
@@ -89,13 +89,13 @@ data.head()
 
 # COMMAND ----------
 
-# MAGIC %md ##Data Visualization
+# MAGIC %md ##Visualización de datos
 # MAGIC
-# MAGIC Before training a model, explore the dataset using Seaborn and Matplotlib.
+# MAGIC Antes de entrenar el modelo, vamos a explorar el set de datos con Seabrorn y Matplotlib.
 
 # COMMAND ----------
 
-# MAGIC %md Plot a histogram of the dependent variable, quality.
+# MAGIC %md Histograma de la variable dependiente: Quality
 
 # COMMAND ----------
 
@@ -104,9 +104,9 @@ sns.distplot(data.quality, kde=False)
 
 # COMMAND ----------
 
-# MAGIC %md Looks like quality scores are normally distributed between 3 and 9. 
+# MAGIC %md Parece que los scores de calidad se distibuyen de forma normal entre 3 y 9. 
 # MAGIC
-# MAGIC Define a wine as high quality if it has quality >= 7.
+# MAGIC El vino lo vamos a definir como de alta calidad si su calidad (quality) está igual o por encima de 7.
 
 # COMMAND ----------
 
@@ -115,7 +115,7 @@ data.quality = high_quality
 
 # COMMAND ----------
 
-# MAGIC %md Box plots are useful in noticing correlations between features and a binary label.
+# MAGIC %md Los "Box Plots" son útiles para identificar correlaciones entre una variable binaria y carácterisiticas (features)
 
 # COMMAND ----------
 
@@ -136,15 +136,17 @@ for col in data.columns:
 
 # COMMAND ----------
 
-# MAGIC %md In the above box plots, a few variables stand out as good univariate predictors of quality. 
+# MAGIC %md Podemos evidenciar lo siguiente:
 # MAGIC
-# MAGIC - In the alcohol box plot, the median alcohol content of high quality wines is greater than even the 75th quantile of low quality wines. High alcohol content is correlated with quality.
-# MAGIC - In the density box plot, low quality wines have a greater density than high quality wines. Density is inversely correlated with quality.
+# MAGIC - Para el caso del alcohol a mayor grado de alcohol mayor calidad.  
+# MAGIC
+# MAGIC - En el caso de la densidad, podemos ver que los vinos de baja calidad tienen una densidad mayor.
 
 # COMMAND ----------
 
-# MAGIC %md ## Preprocessing Data
-# MAGIC Prior to training a model, check for missing values and split the data into training and validation sets.
+# MAGIC %md ## Procesamiento de datos.
+# MAGIC
+# MAGIC Antes de entrenar el modelo, vamos a revisar los valores faltantes y crearemos los set de datos de entrenamiento del modelo y validación de resultados.
 
 # COMMAND ----------
 
@@ -152,7 +154,7 @@ data.isna().any()
 
 # COMMAND ----------
 
-# MAGIC %md There are no missing values.
+# MAGIC %md Podemos ver que no hay valores faltantes.
 
 # COMMAND ----------
 
@@ -168,11 +170,13 @@ data
 
 # COMMAND ----------
 
-# MAGIC %md ## Building a Baseline Model
+# MAGIC %md ## Vamos con nuestro primer modelo (que usaremos como base para mejoras)
 # MAGIC
-# MAGIC This task seems well suited to a random forest classifier, since the output is binary and there may be interactions between multiple variables.
+# MAGIC Usaremos un RANDOM FOREST, dado que trabajamos con un objetivo binario y puede haber interacciones entre múltiples variables.
 # MAGIC
-# MAGIC The following code builds a simple classifier using scikit-learn. It uses MLflow to keep track of the model accuracy, and to save the model for later use.
+# MAGIC En el siguiente code snippet tenemos un clasificador simple en scikit-learn. 
+# MAGIC
+# MAGIC Además usamos flow para guardar métricas y el modelo como artefacto para usar después. 
 
 # COMMAND ----------
 
@@ -217,7 +221,7 @@ with mlflow.start_run(run_name='pycon23_modelo_preferencias_vino'):
 
 # COMMAND ----------
 
-# MAGIC %md Examine the learned feature importances output by the model as a sanity-check.
+# MAGIC %md Examinemos la importancia de las características del modelo
 
 # COMMAND ----------
 
@@ -226,24 +230,23 @@ feature_importances.sort_values('importance', ascending=False)
 
 # COMMAND ----------
 
-# MAGIC %md As illustrated by the boxplots shown previously, both alcohol and density are important in predicting quality.
+# MAGIC %md Confirmamos nuestra hipótesis el alcohol y la densidad son importantes prediciendo la calidad del vino.
 
 # COMMAND ----------
 
-# MAGIC %md You logged the Area Under the ROC Curve (AUC) to MLflow. Click **Experiment** at the upper right to display the Experiment Runs sidebar. 
+# MAGIC %md Podríamos ver en el MLflow las métricas del modelo recién entrenado.
 # MAGIC
-# MAGIC The model achieved an AUC of 0.89. 
+# MAGIC Tenemos un AUC de 0.89. 
 # MAGIC
-# MAGIC A random classifier would have an AUC of 0.5, and higher AUC values are better. For more information, see [Receiver Operating Characteristic Curve](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve).
+# MAGIC Un clasificador aleatorio habría tenido un AUC de 0.5 y entre más alto el AUC mejor. 
 
 # COMMAND ----------
 
-# MAGIC %md #### Registering the model in the MLflow Model Registry
+# MAGIC %md #### Esto cada vez se pone mejor, vamos a Registrar el modelo con MLflow Model Registry
 # MAGIC
-# MAGIC By registering this model in the Model Registry, you can easily reference the model from anywhere within Databricks.
+# MAGIC Al registrarlo podremos referenciarlo facilmente en cualquier momento al trabajar en Databricks.
 # MAGIC
-# MAGIC The following section shows how to do this programmatically, but you can also register a model using the UI by following the steps in [Register a model in the Model Registry
-# MAGIC ](https://docs.databricks.com/applications/mlflow/model-registry.html#register-a-model-in-the-model-registry).
+# MAGIC La siguiente sección muestra cómo hacerlo en código pero también lo podríamos hacer todo usando el UI. [Acá el paso a paso alternativo.](https://docs.databricks.com/applications/mlflow/model-registry.html#register-a-model-in-the-model-registry).
 
 # COMMAND ----------
 
@@ -262,9 +265,9 @@ model_version
 
 # COMMAND ----------
 
-# MAGIC %md You should now see the wine-quality model in the Models page. To display the Models page, click the Models icon in the left sidebar. 
+# MAGIC %md Ahora deberíamos poder ver el modelo en la sección "Models". 
 # MAGIC
-# MAGIC Next, transition this model to production and load it into this notebook from the model registry.
+# MAGIC Ahora programáticamente vamos a pasar el modelo a Producción.
 
 # COMMAND ----------
 
@@ -279,9 +282,9 @@ client.transition_model_version_stage(
 
 # COMMAND ----------
 
-# MAGIC %md The Models page now shows the model version in stage "Production".
+# MAGIC %md La página de modelos ahora debería mostrar el modelo en el Stage "Production".
 # MAGIC
-# MAGIC You can now refer to the model using the path "models:/wine-quality/production".
+# MAGIC El path del modelo es el siguiente "models:/wine-quality/production".
 
 # COMMAND ----------
 
@@ -292,12 +295,13 @@ print(f'AUC: {roc_auc_score(y_test, model.predict(X_test))}')
 
 # COMMAND ----------
 
-# MAGIC %md ##Experimenting with a new model
+# MAGIC %md ## Vamos ahora a experimentar con un XGBOOST un nuevo modelo
 # MAGIC
-# MAGIC The random forest model performed well even without hyperparameter tuning.
+# MAGIC El random forest tuvo un buen rendimiento incluso sin hacer ajuste de hiperparámetros (hyperparameter tuning).
 # MAGIC
-# MAGIC The following code uses the xgboost library to train a more accurate model. It runs a parallel hyperparameter sweep to train multiple
-# MAGIC models in parallel, using Hyperopt and SparkTrials. As before, the code tracks the performance of each parameter configuration with MLflow.
+# MAGIC Acá podríamos exigir a nuestros servidores y hacer el ajuste de hiperparámetros de tal forma que evaluemos múltiples modelos en paralelo, usando Hyperopt y SparkTrials. Para Pycon vamos a hacerlo un par de veces porque queremos que corra rápido. 
+# MAGIC
+# MAGIC Claramente también usaremos MLflow en esta etapa para guardar métricas de cada modelo y los modelos como artefacto para usar después. 
 
 # COMMAND ----------
 
@@ -338,13 +342,23 @@ def train_model(params):
     # Set the loss to -1*auc_score so fmin maximizes the auc_score
     return {'status': STATUS_OK, 'loss': -1*auc_score, 'booster': booster.attributes()}
 
-# Greater parallelism will lead to speedups, but a less optimal hyperparameter sweep. 
-# A reasonable value for parallelism is the square root of max_evals.
-spark_trials = SparkTrials(parallelism=2)
+
 
 
 
 # COMMAND ----------
+
+# MAGIC %md
+# MAGIC Justo acá seleccionamos el número de evaluaciones y la paralelización
+
+# COMMAND ----------
+
+parallelism_ = 2
+max_evals_ = 3
+
+# Greater parallelism will lead to speedups, but a less optimal hyperparameter sweep. 
+# A reasonable value for parallelism is the square root of max_evals.
+spark_trials = SparkTrials(parallelism=parallelism_)
 
 # Run fmin within an MLflow run context so that each hyperparameter configuration is logged as a child run of a parent
 # run called "xgboost_models" .
@@ -353,60 +367,47 @@ with mlflow.start_run(run_name='pycon23_modelo_preferencias_vino_xgboost_1'):
     fn=train_model, 
     space=search_space, 
     algo=tpe.suggest, 
-    max_evals=3,
+    max_evals=max_evals_,
     trials=spark_trials
     #,rstate=np.random.RandomState(123)
   )
 
 # COMMAND ----------
 
-# MAGIC %md  #### Use MLflow to view the results
-# MAGIC Open up the Experiment Runs sidebar to see the MLflow runs. Click on Date next to the down arrow to display a menu, and select 'auc' to display the runs sorted by the auc metric. The highest auc value is 0.91. You beat the baseline!
+# MAGIC %md ## Vamos a MLFlow para analizar los resultados
 # MAGIC
-# MAGIC MLflow tracks the parameters and performance metrics of each run. Click the External Link icon <img src="https://docs.databricks.com/_static/images/external-link.png"/> at the top of the Experiment Runs sidebar to navigate to the MLflow Runs Table.
+# MAGIC Vamos a Experiments Runs a comparar los modelos por 'auc'. El valor mayor es de 0.91. Tenemos un modelo mejor que el inicial!
 
 # COMMAND ----------
 
-# MAGIC %md Now investigate how the hyperparameter choice correlates with AUC. Click the "+" icon to expand the parent run, then select all runs except the parent, and click "Compare". Select the Parallel Coordinates Plot.
+# MAGIC %md Podemos hacer gráficas comparativas en el UI de mlflow para entender como los parámetros se correlacionan con el AUC. 
 # MAGIC
-# MAGIC The Parallel Coordinates Plot is useful in understanding the impact of parameters on a metric. You can drag the pink slider bar at the upper right corner of the plot to highlight a subset of AUC values and the corresponding parameter values. The plot below highlights the highest AUC values:
+# MAGIC Tal como vemos en el ejemplo abajo
 # MAGIC
 # MAGIC <img src="https://docs.databricks.com/_static/images/mlflow/end-to-end-example/parallel-coordinates-plot.png"/>
 # MAGIC
-# MAGIC Notice that all of the top performing runs have a low value for reg_lambda and learning_rate. 
+# MAGIC Vemos que las mejores corridasd tienen valores bajos de reg_lambda y learning_rate.
 # MAGIC
-# MAGIC You could run another hyperparameter sweep to explore even lower values for these parameters. For simplicity, that step is not included in this example.
+# MAGIC Podemos correr otros optimización de hiperparámetros para explorar valores incluso menores para estros parámetros.
 
 # COMMAND ----------
 
-# MAGIC %md 
-# MAGIC You used MLflow to log the model produced by each hyperparameter configuration. The following code finds the best performing run and saves the model to the model registry.
+# MAGIC %md #### Actualicemos MLflow Model Registry con el nuevo mejor modelo para predecir la calidad del vino
+# MAGIC
+# MAGIC Ahora vamos guardar el mejor modelo en el model registry
 
 # COMMAND ----------
 
 best_run = mlflow.search_runs(order_by=['metrics.auc DESC']).iloc[0]
 print(f'AUC of Best Run: {best_run["metrics.auc"]}')
 
-# COMMAND ----------
-
-# MAGIC %md #### Updating the production wine_quality model in the MLflow Model Registry
-# MAGIC
-# MAGIC Earlier, you saved the baseline model to the Model Registry under "wine_quality". Now that you have a created a more accurate model, update wine_quality.
-
-# COMMAND ----------
-
-#dbutils.fs.ls('dbfs:/databricks/mlflow-tracking/596682901737901/858737b9e114459eb34796b36f94ac31/artifacts/model')
-
-# COMMAND ----------
-
-
 new_model_version = mlflow.register_model(f"runs:/{best_run.run_id}/model", model_name)
 
 # COMMAND ----------
 
-# MAGIC %md Click **Models** in the left sidebar to see that the wine_quality model now has two versions. 
+# MAGIC %md Podemos ver todo esto en el UI también.
 # MAGIC
-# MAGIC The following code promotes the new version to production.
+# MAGIC Y ahora usemos el mejor modelo en producción
 
 # COMMAND ----------
 
@@ -416,7 +417,6 @@ client.transition_model_version_stage(
   version=model_version.version,
   stage="Archived"
 )
-
 
 # COMMAND ----------
 
@@ -430,7 +430,9 @@ client.transition_model_version_stage(
 
 # COMMAND ----------
 
-# MAGIC %md Clients that call load_model now receive the new model.
+# MAGIC %md Ahora quienes llamen al modelo de calidad van a recibir las recomendaciones del xgboost no del random forest
+# MAGIC
+# MAGIC Así de fácil fue pasar a producción de nuevo.
 
 # COMMAND ----------
 
@@ -442,9 +444,9 @@ print(f'AUC: {roc_auc_score(y_test, model.predict(X_test))}')
 
 # MAGIC %md ##Batch Inference
 # MAGIC
-# MAGIC There are many scenarios where you might want to evaluate a model on a corpus of new data. For example, you may have a fresh batch of data, or may need to compare the performance of two models on the same corpus of data.
+# MAGIC Hay muchos escenarios en los que deberíamos evaluar el modelo en un nuevo set de datos. 
 # MAGIC
-# MAGIC The following code evaluates the model on data stored in a Delta table, using Spark to run the computation in parallel.
+# MAGIC Tomaremos un nuevo set de datos guardados en una tabla Delta usaremos spark para correr el proceso en paralelo.
 
 # COMMAND ----------
 
@@ -460,7 +462,7 @@ spark_df.write.format("delta").save(table_path)
 
 # COMMAND ----------
 
-# MAGIC %md Load the model into a Spark UDF, so it can be applied to the Delta table.
+# MAGIC %md Cargaremos el modelo en un Spark UDF para poder aplicarlo en la tabla delta.
 
 # COMMAND ----------
 
@@ -495,16 +497,22 @@ display(new_data)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Model serving (here we will need a free account, with full permisions to create the token)
+# MAGIC ## MODEL SERVING con MLFLOW 
 # MAGIC
-# MAGIC To productionize the model for low latency predictions, use MLflow [model serving](https://docs.databricks.com/applications/mlflow/model-serving.html) to deploy the model to an endpoint.
+# MAGIC Paso NO disponible en la [edición community de databricks](https://community.cloud.databricks.com/login.html).
 # MAGIC
-# MAGIC The following code illustrates how to issue requests using a REST API to get predictions from the deployed model.
+# MAGIC Ahora vamos a crear un endpoint para servir los resultados del modelo [model serving](https://docs.databricks.com/machine-learning/model-serving/index.html).
+# MAGIC
+# MAGIC El código a continuación nos muestra como solicitar las resultados del modelo desplegado usando una REST API.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC You need a Databricks token to issue requests to your model endpoint. You can generate a token from the User Settings page (under the profile icon on the upper right), click on `Access Token` tab, and `Generate Token`. Copy the token into the next cell.
+# MAGIC Lo primero que vamos a hacer es crear nuestro token para hacer las solicitudes a nuestro endpoint. 
+# MAGIC
+# MAGIC Vamos al User Settings page (en el perfil arriba a la derecha), click en `Access Token` tab, y `Generate Token`. 
+# MAGIC
+# MAGIC Copiamos el toquen en la celda a continuación.
 
 # COMMAND ----------
 
@@ -514,11 +522,12 @@ os.environ["DATABRICKS_TOKEN"] = "dapi1541924f1d84e692bd0f455479472696-3"
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Click **Models** in the left sidebar and navigate to the registered wine model. Click the serving tab, and then click **Enable Serving**.
+# MAGIC Vamos a **Models** El tab de **serving**, y luego click en **Enable Serving**.
 # MAGIC
-# MAGIC Then, under **Call The Model**, click the **Python** button to display a Python code snippet to issue requests. Copy the code into this notebook. It should look similar to the code in the next cell. 
+# MAGIC Luego vamos a **Call The Model**, click en el botón de **Python** para tener el code snippet necesario para hacer las peticiones y lo pegamos en la celda a continuación. 
 # MAGIC
-# MAGIC You can use the token to make these requests from outside Databricks notebooks as well.
+# MAGIC También lo podemos usar por fuera de Databricks si quisieramos conectar con una aplicación mobile o lo que sea.
+# MAGIC
 
 # COMMAND ----------
 
@@ -532,7 +541,7 @@ os.environ["DATABRICKS_TOKEN"] = "dapi1541924f1d84e692bd0f455479472696-3"
       return {'inputs': {name: data[name].tolist() for name in data.keys()} if isinstance(data, dict) else data.tolist()}
 
     def score_model(dataset):
-      url = 'https://adb-2976239899983568.8.azuredatabricks.net/serving-endpoints/pycon23_cheers/invocations'
+      url = 'https://adb-2976239899983568.8.azuredatabricks.net/serving-endpoints/pycon_serfeliz_endpoint/invocations'
       headers = {'Authorization': f'Bearer {os.environ.get("DATABRICKS_TOKEN")}', 
     'Content-Type': 'application/json'}
       ds_dict = {'dataframe_split': dataset.to_dict(orient='split')} if isinstance(dataset, pd.DataFrame) else create_tf_serving_json(dataset)
@@ -546,7 +555,7 @@ os.environ["DATABRICKS_TOKEN"] = "dapi1541924f1d84e692bd0f455479472696-3"
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC The model predictions from the endpoint should agree with the results from locally evaluating the model.
+# MAGIC Ahora vamos a evaluar que los resultados del endpoint y los resultados del modelo en batch sean los mismos.
 
 # COMMAND ----------
 
@@ -564,3 +573,8 @@ pd.DataFrame(served_predictions)
 
 # Compare the results from the deployed model and the trained model
 pd.DataFrame({ "Model Prediction":model_evaluations}) 
+
+# COMMAND ----------
+
+# MAGIC %md # Y esta etapa de mi vida se llama FELICIDAD.
+# MAGIC
