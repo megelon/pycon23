@@ -7,6 +7,8 @@ Lo primero es ir a la página de [Azure Pass](https://www.microsoftazurepass.com
 
 El único servicio que vas a necesitar es Databricks, así que para bolas y entra a Databricks DENTRO DE AZURE. 
 
+Una vez hayas hecho fork del repo vas a clonarlo en databricks [Para obtener tu GitHub token accede acá](https://github.com/settings/tokens?type=beta)
+
 ### Te dejo material para que te entretengas luego del workshop:
 
 1. [Databricks Community Cloud](https://community.cloud.databricks.com/login.html)
