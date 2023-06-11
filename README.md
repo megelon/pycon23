@@ -1,7 +1,9 @@
 # Workshop Model Serving with MLFlow
 [Pycon COLOMBIA 2023](https://2023.pycon.co/speakers/)  Junio 11 2023
 
-Requieres una cuenta de algún cloud provider, yo lo haré en Azure y tengo créditos para los asistentes presenciales. [Azure Portal](https://portal.azure.com/)
+Requieres una cuenta de algún cloud provider, yo lo haré en Azure y tengo créditos para los asistentes presenciales. 
+
+Lo primero es ir a la página de [Azure Pass](https://www.microsoftazurepass.com/)
 
 El único servicio que vas a necesitar es Databricks, así que para bolas y entra a Databricks DENTRO DE AZURE. 
 
