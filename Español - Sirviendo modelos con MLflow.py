@@ -10,7 +10,7 @@
 # MAGIC - Uso del modelo registrado para generar predicciones usando otro set de datos con Spark UDF.
 # MAGIC - Y finalmente configuración del model serving para entrega de recomendaciones con baja latencia.
 # MAGIC
-# MAGIC En este ejemplo, trabajaremos en precir la calidad del vino "Vinho Verde" basado en las propiedades fisicoquímicas.
+# MAGIC En este ejemplo, trabajaremos en predecir la calidad del vino "Vinho Verde" basado en las propiedades fisicoquímicas.
 # MAGIC
 # MAGIC El ejemplo usa un set de datos del repositorio de Machine Learning de UCI, presentado en [*
 # MAGIC Modeling wine preferences by data mining from physicochemical properties*](https://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub) [Cortez et al., 2009].
@@ -38,11 +38,11 @@ dbutils.library.restartPython()
 # MAGIC
 # MAGIC 1. Desde este libro de Databricks, seleccionemos *File* > *Upload Data*, y arrastraremos estos archivos a la opción que dice drag-and-drop en la consola de Databricks para cargarlos al Databricks File System (DBFS). 
 # MAGIC
-# MAGIC **Nota**: si no tiene la opción *File* > *Upload Data*, ud puede cargar el dataset usando la carpeta de ejemplos. Descomente las siguientes lineas en las seldas a continuación.
+# MAGIC **Nota**: si no tiene la opción *File* > *Upload Data*, usted puede cargar el dataset usando la carpeta de ejemplos. Descomente las siguientes lineas en las seldas a continuación.
 # MAGIC
 # MAGIC 1. Seleccione *Next*. Código auto-generado para cargar los datos aparecerá. Seleccione *pandas*, copie el codigo de ejemplo.
 # MAGIC
-# MAGIC 1. Cree una neva celda, luego péguela en el código de ejemplo. Se verá similar al código en la celda subsiguiente. Haga los siguientes cambios:
+# MAGIC 1. Cree una nueva celda, luego péguela en el código de ejemplo. Se verá similar al código en la celda subsiguiente. Haga los siguientes cambios:
 # MAGIC   - Convierta `sep=';'` a `pd.read_csv`
 # MAGIC   - Cambie los nombres de las variables de `df1` y `df2` a `white_wine` y `red_wine`, como muestra la celda subsiguiente.
 
@@ -115,6 +115,10 @@ data.quality = high_quality
 
 # COMMAND ----------
 
+high_quality
+
+# COMMAND ----------
+
 # MAGIC %md Los "Box Plots" son útiles para identificar correlaciones entre una variable binaria y carácterisiticas (features)
 
 # COMMAND ----------
@@ -138,7 +142,7 @@ for col in data.columns:
 
 # MAGIC %md Podemos evidenciar lo siguiente:
 # MAGIC
-# MAGIC - Para el caso del alcohol a mayor grado de alcohol mayor calidad.  
+# MAGIC - Para el caso del alcohol, a mayor grado de alcohol mayor calidad.  
 # MAGIC
 # MAGIC - En el caso de la densidad, podemos ver que los vinos de baja calidad tienen una densidad mayor.
 
@@ -267,17 +271,19 @@ model_version
 
 # MAGIC %md Ahora deberíamos poder ver el modelo en la sección "Models". 
 # MAGIC
-# MAGIC Ahora programáticamente vamos a pasar el modelo a Producción.
+# MAGIC Ahora programáticamente vamos a pasar el modelo a `Producción`.
 
 # COMMAND ----------
 
 from mlflow.tracking import MlflowClient
 
 client = MlflowClient()
-client.transition_model_version_stage(
-  name=model_name,
-  version=model_version.version,
-  stage="Production",
+
+alias_name = "Production"
+client.set_registered_model_alias(
+    name=model_name,
+    alias=alias_name,
+    version=model_version.version,
 )
 
 # COMMAND ----------
@@ -288,7 +294,10 @@ client.transition_model_version_stage(
 
 # COMMAND ----------
 
-model = mlflow.pyfunc.load_model(f"models:/{model_name}/production")
+model_uri = f"models:/{model_name}@{alias_name}"
+model = mlflow.pyfunc.load_model(model_uri)
+
+# COMMAND ----------
 
 # Sanity-check: This should match the AUC logged by MLflow
 print(f'AUC: {roc_auc_score(y_test, model.predict(X_test))}')
